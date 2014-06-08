@@ -1,0 +1,33 @@
+{
+  "name": "html2svg",
+  "version": "0.0.0",
+  "description": "A set of functions that convert html to svg",
+  "main": "index.html",
+  "dependencies": {
+    "baconjs": "~0.7.13",
+    "gulp": "~3.7.0",
+    "lodash": "~2.4.1"
+  },
+  "devDependencies": {
+    "gulp": "~3.7.0",
+    "gulp-connect": "~2.0.5"
+  },
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/juliankrispel/html2svg.git"
+  },
+  "keywords": [
+    "svg",
+    "html",
+    "javascript"
+  ],
+  "author": "Julian Krispel-Samsel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/juliankrispel/html2svg/issues"
+  },
+  "homepage": "https://github.com/juliankrispel/html2svg"
+}

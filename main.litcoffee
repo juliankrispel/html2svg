@@ -1,4 +1,11 @@
 #Svg Layout Engine
+Let's build something that converts html to svg
+
+So where do we start off?
+
+Well, I guess first we need to iterate through all 
+
+
 We need an efficient way to layout text with svg.
 
 A class of TextBlock has following capabilites/responsibilites:
@@ -78,9 +85,10 @@ Maybe extend EventStream for this?
 
         render: (textObjects, lineWidth = @_lineWidth) ->
             @container.innerHTML = ''
+            console.log textObjects
             tspans = @createTextLines(textObjects, lineWidth)
-            for c in [0..(@columns - 1)]
-                console.log c
+            for t in tspans
+                @container.appendChild t
 
         renderLine: (text, attrs)->
             tspan = createSvgElement('tspan')
