@@ -39,9 +39,48 @@ And a simple type-checking function
         for attr, value of obj
             el.setAttribute(attr, value)
 
+##Html-SVG attribute map
+SVG isn't as flexible as HTML is. Unlike HTML, not every CSS or style attribute
+applies to every element. For example, an SVG text element can't have border
+or background, whereas a rect element can.
 
+To work around that make those conversions with a set of functions, that are
+executed for each visitation to a node in the object tree
 
-#What now?
+    decorateRect = (svgEl, cssStyle, box)->
+        rect = createSvgElement('rect')
+        svgEl.appendChild(rect)
+        console.log cssStyle.borderRadius
+        svgStyle = {
+            fill: cssStyle.backgroundColor
+            stroke: cssStyle.borderColor
+            strokeWidth: cssStyle.borderWidth
+            height: box.height
+            width: box.width
+            x: box.left
+            y: box.top
+        }
+
+        setAttributes(rect, svgStyle)
+
+        svgEl
+
+    decorators = [decorateRect]
+
+One annoyance with SVG is that elements aren't as flexible as in Html.
+For example, a html element can contain both text and have a background
+and a border. Svg Text Elements can't have that so we need to split 
+functionality into different elements. A rectangle could inherit the stroke
+and background color, where an Svg Text Element could contain the text.
+
+So I'd say we have another map that tells our program how to group these 
+attributes.
+
+    #processAttributes = {
+    #    'stroke': 
+    #}
+
+##What now?
 Let's start this naively. I assume that we'll need to walk through all the dom nodes first.
 
     html2svg = (container) ->
@@ -58,27 +97,20 @@ Let's start this naively. I assume that we'll need to walk through all the dom n
 
 
     walk = (svg, container) ->
-        for child in container.children
-            svgEl = createSvgElement('rect')
-            setAttributes(svgEl, mapAttributes(child))
-            svg.appendChild(svgEl)
-            walk(svg, child)
-        
+        assert(container, 'domNode')
+        for child in container.childNodes
+            if child.nodeName == '#text'
+                #console.log 'TODO: Render text nodes'
+            else
+                group = createSvgElement('g')
+                decorate(group, getComputedStyle(child), child.getBoundingClientRect())
+                svg.appendChild(group)
+                walk(svg, child)
+
+    decorate = (args...) ->
+        fn(args...) for fn in decorators
 
     mapAttributes = (el) ->
-        assert(el, 'domNode')
-        box = el.getBoundingClientRect()
-        style = getComputedStyle(el)
-        console.log style
-        {
-            stroke: style.borderColor
-            strokeWidth: style.borderWidth
-            fill: style.backgroundColor || '#ccc'
-            height: box.height
-            width: box.width
-            x: box.left
-            y: box.top
-        }
 
     global = true
 

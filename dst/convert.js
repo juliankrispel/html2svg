@@ -1,5 +1,6 @@
 (function() {
-  var assert, createSvgElement, global, html2svg, isDomNode, isType, mapAttributes, setAttributes, walk;
+  var assert, createSvgElement, decorate, decorateRect, decorators, global, html2svg, isDomNode, isType, mapAttributes, setAttributes, walk,
+    __slice = [].slice;
 
   assert = function(variable, typeName) {
     if (!isType(variable, typeName)) {
@@ -42,6 +43,26 @@
     return _results;
   };
 
+  decorateRect = function(svgEl, cssStyle, box) {
+    var rect, svgStyle;
+    rect = createSvgElement('rect');
+    svgEl.appendChild(rect);
+    console.log(cssStyle.borderRadius);
+    svgStyle = {
+      fill: cssStyle.backgroundColor,
+      stroke: cssStyle.borderColor,
+      strokeWidth: cssStyle.borderWidth,
+      height: box.height,
+      width: box.width,
+      x: box.left,
+      y: box.top
+    };
+    setAttributes(rect, svgStyle);
+    return svgEl;
+  };
+
+  decorators = [decorateRect];
+
   html2svg = function(container) {
     var containerDimensions, svg;
     assert(container, 'domNode');
@@ -53,35 +74,36 @@
   };
 
   walk = function(svg, container) {
-    var child, svgEl, _i, _len, _ref, _results;
-    _ref = container.children;
+    var child, group, _i, _len, _ref, _results;
+    assert(container, 'domNode');
+    _ref = container.childNodes;
     _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       child = _ref[_i];
-      svgEl = createSvgElement('rect');
-      setAttributes(svgEl, mapAttributes(child));
-      svg.appendChild(svgEl);
-      _results.push(walk(svg, child));
+      if (child.nodeName === '#text') {
+
+      } else {
+        group = createSvgElement('g');
+        decorate(group, getComputedStyle(child), child.getBoundingClientRect());
+        svg.appendChild(group);
+        _results.push(walk(svg, child));
+      }
     }
     return _results;
   };
 
-  mapAttributes = function(el) {
-    var box, style;
-    assert(el, 'domNode');
-    box = el.getBoundingClientRect();
-    style = getComputedStyle(el);
-    console.log(style);
-    return {
-      stroke: style.borderColor,
-      strokeWidth: style.borderWidth,
-      fill: style.backgroundColor || '#ccc',
-      height: box.height,
-      width: box.width,
-      x: box.left,
-      y: box.top
-    };
+  decorate = function() {
+    var args, fn, _i, _len, _results;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    _results = [];
+    for (_i = 0, _len = decorators.length; _i < _len; _i++) {
+      fn = decorators[_i];
+      _results.push(fn.apply(null, args));
+    }
+    return _results;
   };
+
+  mapAttributes = function(el) {};
 
   global = true;
 
