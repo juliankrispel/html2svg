@@ -47,14 +47,14 @@ or background, whereas a rect element can.
 To work around that make those conversions with a set of functions, that are
 executed for each visitation to a node in the object tree
 
-    decorateRect = (svgEl, cssStyle, box)->
+    createShape = (svgEl, cssStyle, box)->
         rect = createSvgElement('rect')
         svgEl.appendChild(rect)
-        console.log cssStyle.borderRadius
+        console.log cssStyle.lineHeight
         svgStyle = {
             fill: cssStyle.backgroundColor
             stroke: cssStyle.borderColor
-            strokeWidth: cssStyle.borderWidth
+            'stroke-width': cssStyle.borderWidth
             height: box.height
             width: box.width
             x: box.left
@@ -62,10 +62,42 @@ executed for each visitation to a node in the object tree
         }
 
         setAttributes(rect, svgStyle)
-
         svgEl
 
-    decorators = [decorateRect]
+    createText = (svgEl, cssStyle, box, textNode) ->
+        text = createSvgElement('text')
+        svgEl.appendChild(text)
+
+        paddingTop = parseInt(cssStyle.paddingTop) + (parseFloat(cssStyle.lineHeight)/2)
+        top = parseInt(box.top)
+        left = parseInt(box.left) + parseInt(cssStyle.paddingLeft)
+
+        attributes = {
+            width: box.width
+            x: left
+            y: top
+            dy: paddingTop
+        }
+
+        tspanAttributes = {
+            'font-size': parseInt(cssStyle.fontSize)
+            'fill': cssStyle.color
+            'dy': parseInt(cssStyle.lineHeight)
+            x: left
+        }
+        
+        setAttributes(text, attributes)
+        totalTextWidth = measureText(textNode.wholeText)
+        lines = convertText(textNode.wholeText, totalTextWidth, box.width)
+
+        for l in lines
+            tspan = createSvgElement('tspan')
+            tspan.textContent = l
+            setAttributes(tspan, tspanAttributes)
+            text.appendChild(tspan)
+
+        #text.textContent = textNode.wholeText
+
 
 One annoyance with SVG is that elements aren't as flexible as in Html.
 For example, a html element can contain both text and have a background
@@ -91,26 +123,72 @@ Let's start this naively. I assume that we'll need to walk through all the dom n
 
         svg = createSvgElement('svg')
 
-        walk(svg, container)
+        walkDom(svg, container)
 
         return svg
 
 
-    walk = (svg, container) ->
+    walkDom = (svg, container) ->
         assert(container, 'domNode')
+
+        box = container.getBoundingClientRect()
+        style = getComputedStyle(container)
+        group = createSvgElement('g')
+        createShape(group, style, box)
+        svg.appendChild(group)
+
         for child in container.childNodes
             if child.nodeName == '#text'
+                createText(group, style, box, child)
                 #console.log 'TODO: Render text nodes'
             else
-                group = createSvgElement('g')
-                decorate(group, getComputedStyle(child), child.getBoundingClientRect())
-                svg.appendChild(group)
-                walk(svg, child)
+                walkDom(svg, child)
 
-    decorate = (args...) ->
-        fn(args...) for fn in decorators
+    convertText = (text, textWidth, lineWidth) ->
+        lines = []
+        charsPerLine = calculateCharsPerLine(text.length, textWidth, lineWidth)
+        splitTextIntoLines(text, charsPerLine)
 
-    mapAttributes = (el) ->
+    calculateCharsPerLine = (textLength, textWidth, lineWidth) ->
+        assert(num, 'number') for num in [textLength, textWidth, lineWidth]
+        Math.floor(textLength / (textWidth / lineWidth))
+
+    # To measure text we actually need to append text to the dom
+    measureText = (text, attributes) ->
+        svg = createSvgElement('svg')
+        textContainer = createSvgElement('text')
+        tspan = createSvgElement('tspan')
+        tspan.innerHTML = text
+        setAttributes(tspan, attributes)
+        
+        # Append svg to dom
+        textContainer.appendChild(tspan)
+        svg.appendChild(textContainer)
+        document.body.appendChild(svg)
+
+        # capture width of text
+        textWidth = tspan.getBoundingClientRect().width
+
+        # Remove SVG after operating on it.
+        document.body.removeChild(svg)
+
+        # Return width of text
+        textWidth
+
+    splitTextIntoLines = (text, charsPerLine, lines = []) ->
+        if(text.length > charsPerLine)
+            currentLine = text.substr(0, charsPerLine).split(/\s/)
+            currentLine.pop()
+            currentLine = currentLine.join(' ')
+
+            remainingText = text.substr(currentLine.length).trim()
+
+            lines.push(currentLine)
+            splitTextIntoLines(remainingText, charsPerLine, lines)
+        else
+            if(text.length > 1)
+                lines.push(text)
+            lines
 
     global = true
 
