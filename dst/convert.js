@@ -1,5 +1,5 @@
 (function() {
-  var assert, calculateCharsPerLine, convertText, createShape, createSvgElement, createText, global, html2svg, isDomNode, isType, measureText, setAttributes, splitTextIntoLines, walkDom;
+  var assert, calculateCharsPerLine, convertText, createShape, createSvgElement, createText, getSizeAndPosition, global, html2svg, isDomNode, isType, measureText, setAttributes, splitTextIntoLines, visitDomNodes;
 
   assert = function(variable, typeName) {
     if (!isType(variable, typeName)) {
@@ -47,31 +47,26 @@
     rect = createSvgElement('rect');
     svgEl.appendChild(rect);
     console.log(cssStyle.lineHeight);
-    svgStyle = {
+    svgStyle = _.extend(box, {
       fill: cssStyle.backgroundColor,
       stroke: cssStyle.borderColor,
-      'stroke-width': cssStyle.borderWidth,
-      height: box.height,
-      width: box.width,
-      x: box.left,
-      y: box.top
-    };
+      'stroke-width': cssStyle.borderWidth
+    });
     setAttributes(rect, svgStyle);
     return svgEl;
   };
 
   createText = function(svgEl, cssStyle, box, textNode) {
-    var attributes, l, left, lines, paddingTop, text, top, totalTextWidth, tspan, tspanAttributes, _i, _len, _results;
+    var attributes, i, l, left, lines, paddingTop, text, top, totalTextWidth, tspan, tspanAttributes, _i, _len, _results;
     text = createSvgElement('text');
     svgEl.appendChild(text);
     paddingTop = parseInt(cssStyle.paddingTop) + (parseFloat(cssStyle.lineHeight) / 2);
-    top = parseInt(box.top);
-    left = parseInt(box.left) + parseInt(cssStyle.paddingLeft);
+    top = parseInt(box.y);
+    left = parseInt(box.x) + parseInt(cssStyle.paddingLeft);
     attributes = {
       width: box.width,
       x: left,
-      y: top,
-      dy: paddingTop
+      y: top + paddingTop
     };
     tspanAttributes = {
       'font-size': parseInt(cssStyle.fontSize),
@@ -83,30 +78,38 @@
     totalTextWidth = measureText(textNode.wholeText);
     lines = convertText(textNode.wholeText, totalTextWidth, box.width);
     _results = [];
-    for (_i = 0, _len = lines.length; _i < _len; _i++) {
-      l = lines[_i];
+    for (i = _i = 0, _len = lines.length; _i < _len; i = ++_i) {
+      l = lines[i];
       tspan = createSvgElement('tspan');
       tspan.textContent = l;
-      setAttributes(tspan, tspanAttributes);
+      if (i === 0) {
+        setAttributes(tspan, _.omit(tspanAttributes, 'dy'));
+      } else {
+        setAttributes(tspan, tspanAttributes);
+      }
       _results.push(text.appendChild(tspan));
     }
     return _results;
   };
 
   html2svg = function(container) {
-    var containerDimensions, svg;
+    var box, svg;
     assert(container, 'domNode');
     window.el = container;
-    containerDimensions = el.getBoundingClientRect();
+    box = el.getBoundingClientRect();
     svg = createSvgElement('svg');
-    walkDom(svg, container);
+    setAttributes(svg, {
+      height: box.height,
+      width: box.width
+    });
+    visitDomNodes(svg, container, true);
     return svg;
   };
 
-  walkDom = function(svg, container) {
+  visitDomNodes = function(svg, container, isFirst) {
     var box, child, group, style, _i, _len, _ref, _results;
     assert(container, 'domNode');
-    box = container.getBoundingClientRect();
+    box = getSizeAndPosition(container);
     style = getComputedStyle(container);
     group = createSvgElement('g');
     createShape(group, style, box);
@@ -118,10 +121,21 @@
       if (child.nodeName === '#text') {
         _results.push(createText(group, style, box, child));
       } else {
-        _results.push(walkDom(svg, child));
+        _results.push(visitDomNodes(svg, child));
       }
     }
     return _results;
+  };
+
+  getSizeAndPosition = function(el) {
+    var box;
+    box = el.getBoundingClientRect();
+    return {
+      x: el.offsetLeft,
+      y: el.offsetTop,
+      width: box.width,
+      height: box.height
+    };
   };
 
   convertText = function(text, textWidth, lineWidth) {

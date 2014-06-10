@@ -84,7 +84,9 @@
 <script src="node_modules/lodash/dist/lodash.js"></script>
 <script src="dst/convert.js"></script>
 <script>
+    var timestamp = new Date()
     document.body.appendChild(html2svg(document.getElementById('doc')))
+    console.log('svg2html rendering in -> ', new Date() - timestamp, 'ms')
 </script>
 </body>
 </html>

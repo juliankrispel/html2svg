@@ -51,15 +51,11 @@ executed for each visitation to a node in the object tree
         rect = createSvgElement('rect')
         svgEl.appendChild(rect)
         console.log cssStyle.lineHeight
-        svgStyle = {
+        svgStyle = _.extend(box, {
             fill: cssStyle.backgroundColor
             stroke: cssStyle.borderColor
             'stroke-width': cssStyle.borderWidth
-            height: box.height
-            width: box.width
-            x: box.left
-            y: box.top
-        }
+        })
 
         setAttributes(rect, svgStyle)
         svgEl
@@ -69,14 +65,13 @@ executed for each visitation to a node in the object tree
         svgEl.appendChild(text)
 
         paddingTop = parseInt(cssStyle.paddingTop) + (parseFloat(cssStyle.lineHeight)/2)
-        top = parseInt(box.top)
-        left = parseInt(box.left) + parseInt(cssStyle.paddingLeft)
+        top = parseInt(box.y)
+        left = parseInt(box.x) + parseInt(cssStyle.paddingLeft)
 
         attributes = {
             width: box.width
             x: left
-            y: top
-            dy: paddingTop
+            y: top + paddingTop
         }
 
         tspanAttributes = {
@@ -90,10 +85,13 @@ executed for each visitation to a node in the object tree
         totalTextWidth = measureText(textNode.wholeText)
         lines = convertText(textNode.wholeText, totalTextWidth, box.width)
 
-        for l in lines
+        for l,i in lines
             tspan = createSvgElement('tspan')
             tspan.textContent = l
-            setAttributes(tspan, tspanAttributes)
+            if(i == 0)
+                setAttributes(tspan, _.omit(tspanAttributes, 'dy'))
+            else
+                setAttributes(tspan, tspanAttributes)
             text.appendChild(tspan)
 
         #text.textContent = textNode.wholeText
@@ -105,33 +103,32 @@ and a border. Svg Text Elements can't have that so we need to split
 functionality into different elements. A rectangle could inherit the stroke
 and background color, where an Svg Text Element could contain the text.
 
-So I'd say we have another map that tells our program how to group these 
-attributes.
-
-    #processAttributes = {
-    #    'stroke': 
-    #}
-
 ##What now?
-Let's start this naively. I assume that we'll need to walk through all the dom nodes first.
+I assume that we'll need to walk through all the dom nodes first.
 
     html2svg = (container) ->
         assert(container, 'domNode')
         window.el = container
 
-        containerDimensions = el.getBoundingClientRect()
+        box = el.getBoundingClientRect()
 
         svg = createSvgElement('svg')
 
-        walkDom(svg, container)
+        setAttributes(svg, {
+            height: box.height
+            width: box.width
+        })
+
+        visitDomNodes(svg, container, true)
 
         return svg
 
 
-    walkDom = (svg, container) ->
+    visitDomNodes = (svg, container, isFirst) ->
         assert(container, 'domNode')
 
-        box = container.getBoundingClientRect()
+        box = getSizeAndPosition(container)
+
         style = getComputedStyle(container)
         group = createSvgElement('g')
         createShape(group, style, box)
@@ -142,7 +139,17 @@ Let's start this naively. I assume that we'll need to walk through all the dom n
                 createText(group, style, box, child)
                 #console.log 'TODO: Render text nodes'
             else
-                walkDom(svg, child)
+                visitDomNodes(svg, child)
+
+     getSizeAndPosition = (el) ->
+        box = el.getBoundingClientRect()
+        {
+            x: el.offsetLeft
+            y: el.offsetTop
+            width: box.width
+            height: box.height
+
+        }
 
     convertText = (text, textWidth, lineWidth) ->
         lines = []
