@@ -32,8 +32,7 @@ And a simple type-checking function
         domNode.hasOwnProperty('nodeType')
 
     createSvgElement = (name) ->
-        _svgNameSpace = "http://www.w3.org/2000/svg"
-        document.createElementNS(_svgNameSpace, name)
+        document.createElementNS("http://www.w3.org/2000/svg", name)
 
     setAttributes = (el, obj) ->
         for attr, value of obj
@@ -50,7 +49,6 @@ executed for each visitation to a node in the object tree
     createShape = (svgEl, cssStyle, box)->
         rect = createSvgElement('rect')
         svgEl.appendChild(rect)
-        console.log cssStyle.lineHeight
         svgStyle = _.extend(box, {
             fill: cssStyle.backgroundColor
             stroke: cssStyle.borderColor
@@ -64,10 +62,13 @@ executed for each visitation to a node in the object tree
         text = createSvgElement('text')
         svgEl.appendChild(text)
 
-        paddingTop = parseInt(cssStyle.paddingTop) + (parseFloat(cssStyle.lineHeight)/2)
+        halfFontSize = parseFloat(cssStyle.fontSize) / 2
+        halfLineHeight = parseFloat(cssStyle.lineHeight) / 2
+        paddingTop = parseInt(parseFloat(cssStyle.paddingTop) + halfLineHeight + (halfLineHeight - halfFontSize))
         top = parseInt(box.y)
         left = parseInt(box.x) + parseInt(cssStyle.paddingLeft)
 
+        console.log('text', cssStyle.fontSize, cssStyle.lineHeight)
         attributes = {
             width: box.width
             x: left
@@ -119,6 +120,8 @@ I assume that we'll need to walk through all the dom nodes first.
             width: box.width
         })
 
+        svg.containerOffset = [box.left, box.top]
+
         visitDomNodes(svg, container, true)
 
         return svg
@@ -127,7 +130,7 @@ I assume that we'll need to walk through all the dom nodes first.
     visitDomNodes = (svg, container, isFirst) ->
         assert(container, 'domNode')
 
-        box = getSizeAndPosition(container)
+        box = getSizeAndPosition(container, svg.containerOffset)
 
         style = getComputedStyle(container)
         group = createSvgElement('g')
@@ -141,11 +144,11 @@ I assume that we'll need to walk through all the dom nodes first.
             else
                 visitDomNodes(svg, child)
 
-     getSizeAndPosition = (el) ->
+    getSizeAndPosition = (el, containerOffset) ->
         box = el.getBoundingClientRect()
         {
-            x: el.offsetLeft
-            y: el.offsetTop
+            x: box.left - containerOffset[0]
+            y: box.top - containerOffset[1]
             width: box.width
             height: box.height
 

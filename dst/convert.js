@@ -27,9 +27,7 @@
   };
 
   createSvgElement = function(name) {
-    var _svgNameSpace;
-    _svgNameSpace = "http://www.w3.org/2000/svg";
-    return document.createElementNS(_svgNameSpace, name);
+    return document.createElementNS("http://www.w3.org/2000/svg", name);
   };
 
   setAttributes = function(el, obj) {
@@ -46,7 +44,6 @@
     var rect, svgStyle;
     rect = createSvgElement('rect');
     svgEl.appendChild(rect);
-    console.log(cssStyle.lineHeight);
     svgStyle = _.extend(box, {
       fill: cssStyle.backgroundColor,
       stroke: cssStyle.borderColor,
@@ -57,12 +54,15 @@
   };
 
   createText = function(svgEl, cssStyle, box, textNode) {
-    var attributes, i, l, left, lines, paddingTop, text, top, totalTextWidth, tspan, tspanAttributes, _i, _len, _results;
+    var attributes, halfFontSize, halfLineHeight, i, l, left, lines, paddingTop, text, top, totalTextWidth, tspan, tspanAttributes, _i, _len, _results;
     text = createSvgElement('text');
     svgEl.appendChild(text);
-    paddingTop = parseInt(cssStyle.paddingTop) + (parseFloat(cssStyle.lineHeight) / 2);
+    halfFontSize = parseFloat(cssStyle.fontSize) / 2;
+    halfLineHeight = parseFloat(cssStyle.lineHeight) / 2;
+    paddingTop = parseInt(parseFloat(cssStyle.paddingTop) + halfLineHeight + (halfLineHeight - halfFontSize));
     top = parseInt(box.y);
     left = parseInt(box.x) + parseInt(cssStyle.paddingLeft);
+    console.log('text', cssStyle.fontSize, cssStyle.lineHeight);
     attributes = {
       width: box.width,
       x: left,
@@ -102,6 +102,7 @@
       height: box.height,
       width: box.width
     });
+    svg.containerOffset = [box.left, box.top];
     visitDomNodes(svg, container, true);
     return svg;
   };
@@ -109,7 +110,7 @@
   visitDomNodes = function(svg, container, isFirst) {
     var box, child, group, style, _i, _len, _ref, _results;
     assert(container, 'domNode');
-    box = getSizeAndPosition(container);
+    box = getSizeAndPosition(container, svg.containerOffset);
     style = getComputedStyle(container);
     group = createSvgElement('g');
     createShape(group, style, box);
@@ -127,12 +128,12 @@
     return _results;
   };
 
-  getSizeAndPosition = function(el) {
+  getSizeAndPosition = function(el, containerOffset) {
     var box;
     box = el.getBoundingClientRect();
     return {
-      x: el.offsetLeft,
-      y: el.offsetTop,
+      x: box.left - containerOffset[0],
+      y: box.top - containerOffset[1],
       width: box.width,
       height: box.height
     };
