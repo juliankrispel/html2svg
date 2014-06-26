@@ -41,13 +41,22 @@
   };
 
   createShape = function(svgEl, cssStyle, box) {
-    var rect, svgStyle;
+    var borderRadi, radius, rect, svgStyle;
     rect = createSvgElement('rect');
     svgEl.appendChild(rect);
+    borderRadi = _(cssStyle).pick('border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius').values().map(function(e) {
+      return parseInt(e);
+    }).unique().value();
+    radius = 0;
+    if (borderRadi.length === 1 && borderRadi[0] > 0) {
+      radius = borderRadi[0];
+    }
     svgStyle = _.extend(box, {
       fill: cssStyle['background-color'],
       stroke: cssStyle['border-top-color'],
-      'stroke-width': cssStyle['border-top-width']
+      'stroke-width': cssStyle['border-top-width'],
+      rx: radius,
+      ry: radius
     });
     setAttributes(rect, svgStyle);
     return svgEl;
@@ -174,7 +183,7 @@
       num = _ref[_i];
       assert(num, 'number');
     }
-    return Math.ceil(textLength / (textWidth / lineWidth));
+    return Math.floor(textLength / (textWidth / lineWidth));
   };
 
   measureText = function(text, attributes) {

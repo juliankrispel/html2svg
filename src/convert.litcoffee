@@ -49,10 +49,19 @@ executed for each visitation to a node in the object tree
     createShape = (svgEl, cssStyle, box)->
         rect = createSvgElement('rect')
         svgEl.appendChild(rect)
+        borderRadi = _(cssStyle).pick('border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius').values().map((e)-> return parseInt(e)).unique().value()
+        radius = 0
+
+        if borderRadi.length == 1 && borderRadi[0] > 0
+            radius = borderRadi[0]
+
+
         svgStyle = _.extend(box, {
             fill: cssStyle['background-color']
             stroke: cssStyle['border-top-color']
             'stroke-width': cssStyle['border-top-width']
+            rx: radius
+            ry: radius
         })
 
         setAttributes(rect, svgStyle)
@@ -158,6 +167,8 @@ I assume that we'll need to walk through all the dom nodes first.
 
         #style = getComputedStyle(container)
         style = getStyles(container)
+        #if(container.className == 'active')
+        #    console.log('before', getComputedStyle(container, ':before'))
         group = createSvgElement('g')
         createShape(group, style, box)
         svg.appendChild(group)
@@ -188,7 +199,7 @@ I assume that we'll need to walk through all the dom nodes first.
 
     calculateCharsPerLine = (textLength, textWidth, lineWidth) ->
         assert(num, 'number') for num in [textLength, textWidth, lineWidth]
-        Math.ceil(textLength / (textWidth / lineWidth))
+        Math.floor(textLength / (textWidth / lineWidth))
 
     # To measure text we actually need to append text to the dom
     measureText = (text, attributes) ->
