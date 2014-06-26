@@ -1,5 +1,5 @@
 (function() {
-  var assert, calculateCharsPerLine, convertText, createShape, createSvgElement, createText, getSizeAndPosition, global, html2svg, isDomNode, isType, measureText, setAttributes, splitTextIntoLines, visitDomNodes;
+  var assert, calculateCharsPerLine, convertText, createShape, createSvgElement, createText, getSizeAndPosition, getStyles, global, html2svg, isDomNode, isType, measureText, setAttributes, splitTextIntoLines, visitDomNodes;
 
   assert = function(variable, typeName) {
     if (!isType(variable, typeName)) {
@@ -45,48 +45,67 @@
     rect = createSvgElement('rect');
     svgEl.appendChild(rect);
     svgStyle = _.extend(box, {
-      fill: cssStyle.backgroundColor,
-      stroke: cssStyle.borderColor,
-      'stroke-width': cssStyle.borderWidth
+      fill: cssStyle['background-color'],
+      stroke: cssStyle['border-top-color'],
+      'stroke-width': cssStyle['border-top-width']
     });
     setAttributes(rect, svgStyle);
     return svgEl;
   };
 
+  getStyles = function(el) {
+    var css, prop, styles, val, _i, _len;
+    css = getComputedStyle(el, '');
+    styles = {};
+    for (_i = 0, _len = css.length; _i < _len; _i++) {
+      prop = css[_i];
+      val = css.getPropertyValue(prop);
+      if (val) {
+        styles[prop] = val;
+      }
+    }
+    return styles;
+  };
+
   createText = function(svgEl, cssStyle, box, textNode) {
-    var attributes, halfFontSize, halfLineHeight, i, l, left, lines, paddingTop, text, top, totalTextWidth, tspan, tspanAttributes, _i, _len, _results;
+    var attributes, fontSize, i, l, left, lineHeight, lines, paddingTop, text, top, totalTextWidth, tspan, tspanAttributes, tspanAttributesCloned, _i, _len, _results;
     text = createSvgElement('text');
     svgEl.appendChild(text);
-    halfFontSize = parseFloat(cssStyle.fontSize) / 2;
-    halfLineHeight = parseFloat(cssStyle.lineHeight) / 2;
-    paddingTop = parseInt(parseFloat(cssStyle.paddingTop) + halfLineHeight + (halfLineHeight - halfFontSize));
+    fontSize = parseFloat(cssStyle['font-size']);
+    lineHeight = parseFloat(cssStyle['line-height']);
+    if (cssStyle['display'] === 'inline') {
+      lineHeight = fontSize;
+    }
+    paddingTop = parseFloat(cssStyle['padding-top']);
     top = parseInt(box.y);
-    left = parseInt(box.x) + parseInt(cssStyle.paddingLeft);
-    console.log('text', cssStyle.fontSize, cssStyle.lineHeight);
+    left = parseInt(box.x) + parseInt(cssStyle['padding-left']);
+    console.log('\ntext > ', textNode.wholeText, '\ny', box.y, '\nlineHeight > ', lineHeight, '\nfontSize > ', fontSize, '\npaddingTop > ', paddingTop);
     attributes = {
       width: box.width,
       x: left,
       y: top + paddingTop
     };
     tspanAttributes = {
-      'font-size': parseInt(cssStyle.fontSize),
+      'font-size': parseInt(cssStyle['font-size']),
+      'font-weight': cssStyle['font-weight'],
+      'alignment-baseline': 'central',
       'fill': cssStyle.color,
-      'dy': parseInt(cssStyle.lineHeight),
+      'dy': lineHeight,
       x: left
     };
     setAttributes(text, attributes);
-    totalTextWidth = measureText(textNode.wholeText);
+    totalTextWidth = measureText(textNode.wholeText, tspanAttributes);
     lines = convertText(textNode.wholeText, totalTextWidth, box.width);
     _results = [];
     for (i = _i = 0, _len = lines.length; _i < _len; i = ++_i) {
       l = lines[i];
       tspan = createSvgElement('tspan');
       tspan.textContent = l;
+      tspanAttributesCloned = _.clone(tspanAttributes);
       if (i === 0) {
-        setAttributes(tspan, _.omit(tspanAttributes, 'dy'));
-      } else {
-        setAttributes(tspan, tspanAttributes);
+        tspanAttributesCloned.dy = lineHeight / 2;
       }
+      setAttributes(tspan, tspanAttributesCloned);
       _results.push(text.appendChild(tspan));
     }
     return _results;
@@ -111,7 +130,7 @@
     var box, child, group, style, _i, _len, _ref, _results;
     assert(container, 'domNode');
     box = getSizeAndPosition(container, svg.containerOffset);
-    style = getComputedStyle(container);
+    style = getStyles(container);
     group = createSvgElement('g');
     createShape(group, style, box);
     svg.appendChild(group);
@@ -121,6 +140,8 @@
       child = _ref[_i];
       if (child.nodeName === '#text') {
         _results.push(createText(group, style, box, child));
+      } else if (child.nodeName === '#comment') {
+
       } else {
         _results.push(visitDomNodes(svg, child));
       }
@@ -153,7 +174,7 @@
       num = _ref[_i];
       assert(num, 'number');
     }
-    return Math.floor(textLength / (textWidth / lineWidth));
+    return Math.ceil(textLength / (textWidth / lineWidth));
   };
 
   measureText = function(text, attributes) {

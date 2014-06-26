@@ -50,25 +50,47 @@ executed for each visitation to a node in the object tree
         rect = createSvgElement('rect')
         svgEl.appendChild(rect)
         svgStyle = _.extend(box, {
-            fill: cssStyle.backgroundColor
-            stroke: cssStyle.borderColor
-            'stroke-width': cssStyle.borderWidth
+            fill: cssStyle['background-color']
+            stroke: cssStyle['border-top-color']
+            'stroke-width': cssStyle['border-top-width']
         })
 
         setAttributes(rect, svgStyle)
         svgEl
 
+    getStyles = (el) ->
+        css = getComputedStyle(el, '')
+        styles = {}
+        for prop in css
+            val = css.getPropertyValue(prop)
+            if(val)
+                styles[prop ] = val
+        styles
+
     createText = (svgEl, cssStyle, box, textNode) ->
         text = createSvgElement('text')
         svgEl.appendChild(text)
 
-        halfFontSize = parseFloat(cssStyle.fontSize) / 2
-        halfLineHeight = parseFloat(cssStyle.lineHeight) / 2
-        paddingTop = parseInt(parseFloat(cssStyle.paddingTop) + halfLineHeight + (halfLineHeight - halfFontSize))
-        top = parseInt(box.y)
-        left = parseInt(box.x) + parseInt(cssStyle.paddingLeft)
 
-        console.log('text', cssStyle.fontSize, cssStyle.lineHeight)
+        fontSize = parseFloat(cssStyle['font-size'])
+        lineHeight = parseFloat(cssStyle['line-height'])
+
+        if(cssStyle['display'] == 'inline')
+            lineHeight = fontSize
+
+        paddingTop = parseFloat(cssStyle['padding-top'])
+
+        top = parseInt(box.y)
+        left = parseInt(box.x) + parseInt(cssStyle['padding-left'])
+
+        console.log(
+            '\ntext > ', textNode.wholeText, 
+            '\ny', box.y, 
+            '\nlineHeight > ', lineHeight, 
+            '\nfontSize > ', fontSize, 
+            '\npaddingTop > ', paddingTop)
+
+
         attributes = {
             width: box.width
             x: left
@@ -76,23 +98,25 @@ executed for each visitation to a node in the object tree
         }
 
         tspanAttributes = {
-            'font-size': parseInt(cssStyle.fontSize)
+            'font-size': parseInt(cssStyle['font-size'])
+            'font-weight': cssStyle['font-weight']
+            'alignment-baseline': 'central'
             'fill': cssStyle.color
-            'dy': parseInt(cssStyle.lineHeight)
+            'dy': lineHeight
             x: left
         }
         
         setAttributes(text, attributes)
-        totalTextWidth = measureText(textNode.wholeText)
+        totalTextWidth = measureText(textNode.wholeText, tspanAttributes)
         lines = convertText(textNode.wholeText, totalTextWidth, box.width)
 
         for l,i in lines
             tspan = createSvgElement('tspan')
             tspan.textContent = l
+            tspanAttributesCloned = _.clone(tspanAttributes)
             if(i == 0)
-                setAttributes(tspan, _.omit(tspanAttributes, 'dy'))
-            else
-                setAttributes(tspan, tspanAttributes)
+                tspanAttributesCloned.dy = lineHeight/2
+            setAttributes(tspan, tspanAttributesCloned)
             text.appendChild(tspan)
 
         #text.textContent = textNode.wholeText
@@ -132,7 +156,8 @@ I assume that we'll need to walk through all the dom nodes first.
 
         box = getSizeAndPosition(container, svg.containerOffset)
 
-        style = getComputedStyle(container)
+        #style = getComputedStyle(container)
+        style = getStyles(container)
         group = createSvgElement('g')
         createShape(group, style, box)
         svg.appendChild(group)
@@ -141,6 +166,8 @@ I assume that we'll need to walk through all the dom nodes first.
             if child.nodeName == '#text'
                 createText(group, style, box, child)
                 #console.log 'TODO: Render text nodes'
+            else if(child.nodeName == '#comment')
+                #TODO: Do something with comments?
             else
                 visitDomNodes(svg, child)
 
@@ -161,7 +188,7 @@ I assume that we'll need to walk through all the dom nodes first.
 
     calculateCharsPerLine = (textLength, textWidth, lineWidth) ->
         assert(num, 'number') for num in [textLength, textWidth, lineWidth]
-        Math.floor(textLength / (textWidth / lineWidth))
+        Math.ceil(textLength / (textWidth / lineWidth))
 
     # To measure text we actually need to append text to the dom
     measureText = (text, attributes) ->
